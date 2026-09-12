@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Reminders - RemindMeApp{% endblock %}
+{% block content %}
+
+  <section class="card">
+    <h2>Add a reminder</h2>
+    <form method="post" action="{{ url_for('tasks.create_task') }}" class="task-form">
+      <input type="text" name="title" placeholder="e.g. Reply to Jane's email about Q3 budget" required maxlength="500">
+      <textarea name="notes" placeholder="Optional details or a link to the email" rows="2"></textarea>
+      <label class="inline-label">
+        Remind me after
+        <input type="date" name="remind_after">
+        <span class="hint">(leave blank to be reminded starting now)</span>
+      </label>
+      <button type="submit" class="button">Add reminder</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Open tasks ({{ open_tasks|length }})</h2>
+      <form method="post" action="{{ url_for('tasks.send_now') }}">
+        <button type="submit" class="button secondary">Email me this list now</button>
+      </form>
+    </div>
+    {% if open_tasks %}
+      <ul class="task-list">
+        {% for task in open_tasks %}
+          <li class="task-item">
+            <form method="post" action="{{ url_for('tasks.toggle_done', task_id=task.id) }}">
+              <label class="checkbox">
+                <input type="checkbox" onchange="this.form.submit()">
+                <span class="task-title">{{ task.title }}</span>
+              </label>
+            </form>
+            {% if task.notes %}<div class="task-notes">{{ task.notes }}</div>{% endif %}
+            <div class="task-meta">Added {{ task.created_at.strftime('%Y-%m-%d') }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No open tasks. You're all caught up.</p>
+    {% endif %}
+  </section>
+
+  {% if snoozed_tasks %}
+    <section class="card">
+      <h2>Snoozed ({{ snoozed_tasks|length }})</h2>
+      <p class="hint">These won't appear above or in your morning digest until their date passes.</p>
+      <ul class="task-list">
+        {% for task in snoozed_tasks %}
+          <li class="task-item">
+            <span class="task-title">{{ task.title }}</span>
+            <span class="badge">until {{ task.remind_after.strftime('%Y-%m-%d') }}</span>
+            {% if task.notes %}<div class="task-notes">{{ task.notes }}</div>{% endif %}
+            <form method="post" action="{{ url_for('tasks.toggle_done', task_id=task.id) }}">
+              <button type="submit" class="link-button">Mark done</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+{% endblock %}
