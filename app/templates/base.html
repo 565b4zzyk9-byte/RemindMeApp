@@ -13,6 +13,7 @@
       <nav>
         <a href="{{ url_for('tasks.index') }}">Reminders</a>
         <a href="{{ url_for('tasks.search') }}">Search</a>
+        <a href="{{ url_for('addin.install') }}">Outlook add-in</a>
         <span class="user">{{ current_user.display_name or current_user.email }}</span>
         <a href="{{ url_for('auth.logout') }}">Sign out</a>
       </nav>

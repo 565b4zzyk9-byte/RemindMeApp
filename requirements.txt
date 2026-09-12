@@ -1,6 +1,7 @@
 Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 msal==1.29.0
+PyJWT[crypto]==2.9.0
 requests==2.32.3
 APScheduler==3.10.4
 python-dotenv==1.0.1

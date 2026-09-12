@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Add to RemindMeApp</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      color: #1a202c;
+    }
+    h1 { font-size: 16px; margin: 0 0 12px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #dfe3e8; }
+    .tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 13px;
+      color: #6b7280;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active { color: #2b6cb0; border-bottom-color: #2b6cb0; font-weight: 600; }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+    input[type=text], input[type=date], textarea {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid #dfe3e8;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .email-preview {
+      background: #f7f8fa;
+      border: 1px solid #dfe3e8;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .email-preview .subject { font-weight: 600; margin-bottom: 2px; }
+    .email-preview .from { color: #6b7280; }
+    button.primary {
+      width: 100%;
+      background: #2b6cb0;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button.primary:disabled { opacity: 0.6; cursor: default; }
+    .status { margin-top: 12px; font-size: 13px; }
+    .status.error { color: #991b1b; }
+    .status.success { color: #065f46; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Add a RemindMeApp reminder</h1>
+
+  <div class="tabs">
+    <button type="button" class="tab active" data-mode="email">From this email</button>
+    <button type="button" class="tab" data-mode="custom">Custom text</button>
+  </div>
+
+  <form id="reminder-form">
+    <div id="email-mode">
+      <div class="email-preview">
+        <div class="subject" id="email-subject">Loading email…</div>
+        <div class="from" id="email-from"></div>
+      </div>
+    </div>
+
+    <div id="custom-mode" hidden>
+      <div class="field">
+        <label for="custom-title">Reminder text</label>
+        <input type="text" id="custom-title" maxlength="500" placeholder="e.g. Order more office supplies">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Notes (optional)</label>
+      <textarea id="notes" rows="3" placeholder="Any extra details"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="remind-after">Remind me after (optional)</label>
+      <input type="date" id="remind-after">
+    </div>
+
+    <button type="submit" class="primary" id="submit-btn">Add reminder</button>
+    <div class="status" id="status"></div>
+  </form>
+
+  <script>
+    var mode = "email";
+    var emailContext = null;
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.querySelectorAll(".tab").forEach(function (t) {
+        t.classList.toggle("active", t.dataset.mode === newMode);
+      });
+      document.getElementById("email-mode").hidden = newMode !== "email";
+      document.getElementById("custom-mode").hidden = newMode !== "custom";
+    }
+
+    document.querySelectorAll(".tab").forEach(function (tab) {
+      tab.addEventListener("click", function () { setMode(tab.dataset.mode); });
+    });
+
+    function showStatus(message, kind) {
+      var el = document.getElementById("status");
+      el.textContent = message;
+      el.className = "status " + (kind || "");
+    }
+
+    Office.onReady(function () {
+      try {
+        var item = Office.context.mailbox.item;
+        var fromAddr = item.from ? (item.from.displayName || item.from.emailAddress) : "";
+        document.getElementById("email-subject").textContent = item.subject || "(no subject)";
+        document.getElementById("email-from").textContent = fromAddr ? "From " + fromAddr : "";
+
+        var restId = Office.context.mailbox.convertToRestId
+          ? Office.context.mailbox.convertToRestId(item.itemId, Office.MailboxEnums.RestVersion.v2_0)
+          : item.itemId;
+        var webLink = "https://outlook.office.com/mail/deeplink/read/" + encodeURIComponent(restId);
+
+        emailContext = { subject: item.subject || "", from: fromAddr, link: webLink };
+      } catch (e) {
+        document.getElementById("email-subject").textContent = "Could not read this email.";
+        setMode("custom");
+      }
+    });
+
+    document.getElementById("reminder-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      var title, notes;
+      var notesField = document.getElementById("notes").value.trim();
+
+      if (mode === "email") {
+        if (!emailContext) {
+          showStatus("Email details are not available yet, try again in a moment.", "error");
+          return;
+        }
+        title = emailContext.subject || "(no subject)";
+        var linkLine = "Email: " + emailContext.link;
+        var fromLine = emailContext.from ? "From: " + emailContext.from : "";
+        notes = [fromLine, linkLine, notesField].filter(Boolean).join("\n");
+      } else {
+        title = document.getElementById("custom-title").value.trim();
+        if (!title) {
+          showStatus("Enter some reminder text first.", "error");
+          return;
+        }
+        notes = notesField;
+      }
+
+      var remindAfter = document.getElementById("remind-after").value;
+      var submitBtn = document.getElementById("submit-btn");
+      submitBtn.disabled = true;
+      showStatus("Signing you in…");
+
+      OfficeRuntime.auth.getAccessToken({ allowSignInPrompt: true, allowConsentPrompt: true })
+        .then(function (token) {
+          showStatus("Adding reminder…");
+          return fetch("/addin/api/tasks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token,
+            },
+            body: JSON.stringify({ title: title, notes: notes, remind_after: remindAfter }),
+          });
+        })
+        .then(function (resp) {
+          if (!resp.ok) {
+            return resp.json().catch(function () { return {}; }).then(function (body) {
+              throw new Error(body.error || ("request failed (" + resp.status + ")"));
+            });
+          }
+          showStatus("Reminder added.", "success");
+          document.getElementById("custom-title").value = "";
+          document.getElementById("notes").value = "";
+          document.getElementById("remind-after").value = "";
+        })
+        .catch(function (err) {
+          var message = (err && err.code) ? "Please sign in to RemindMeApp in a browser first, then try again." : (err.message || String(err));
+          showStatus(message, "error");
+        })
+        .finally(function () {
+          submitBtn.disabled = false;
+        });
+    });
+  </script>
+</body>
+</html>

@@ -16,6 +16,11 @@ tasks every workday morning, sent via Microsoft Graph.
   Graph, as themselves) listing their current open reminders.
 - A "email me this list now" button to trigger your digest on demand.
 - Search across all your reminders, including completed ones.
+- Edit or delete a reminder at any time.
+- An Outlook add-in adds a "Add reminder" button to the reading pane: pick
+  "from this email" (pre-fills the subject, sender, and a link back to the
+  email) or "custom text" for anything else, plus an optional remind-after
+  date — all without leaving Outlook.
 
 ## How it works
 
@@ -31,6 +36,15 @@ tasks every workday morning, sent via Microsoft Graph.
 - **APScheduler** runs an in-process cron job (`app/scheduler.py`) that
   fires weekday mornings and calls `send_daily_digests`, which emails every
   user their open (non-snoozed, non-done) tasks.
+- The **Outlook add-in** (`app/addin.py`, manifest at `/addin/manifest.xml`)
+  is a task pane that uses Office SSO (`OfficeRuntime.auth.getAccessToken`)
+  to identify the signed-in Outlook user without a separate login. The
+  resulting token is a bearer token scoped to this app (audience = its
+  "Application ID URI"), which the backend verifies (signature, expiry,
+  audience) against Azure AD's public keys before creating the reminder. If
+  the token identifies a user who has never signed into the web app, a
+  `User` row is created on the fly (with no cached Graph token yet, so they
+  won't get digest emails until they sign into the web app at least once).
 
 ## Setup
 
@@ -50,7 +64,27 @@ tasks every workday morning, sent via Microsoft Graph.
 5. Copy the **Application (client) ID** and **Directory (tenant) ID** from
    the app's Overview page.
 
-### 2. Configure the app
+### 2. Enable Office SSO for the Outlook add-in (optional)
+
+Skip this if you don't need the Outlook add-in.
+
+1. In the same app registration, go to **Expose an API**. Click **Add** next
+   to Application ID URI and accept the default (`api://<client-id>`), or
+   set it to `api://<your-domain>/<client-id>` to match `ADDIN_APP_ID_URI`
+   below.
+2. Click **Add a scope**: name it `access_as_user`, admin consent display
+   name/description anything reasonable, state **Enabled**.
+3. Under **Authorized client applications**, add these two Microsoft-owned
+   IDs and authorize them for the `access_as_user` scope (these are
+   Microsoft's published client IDs for Office desktop and Office on the
+   web, required for Office SSO to work without an extra consent prompt):
+   - `d3590ed6-52b3-4102-aeff-aad2292ab01c` (Microsoft Office)
+   - `ea5a67f6-b6f3-4338-b240-c655ddc3cc8e` (Office on the web)
+4. If you set a custom Application ID URI in step 1, set `ADDIN_APP_ID_URI`
+   in `.env` to match it exactly; otherwise the default derived from
+   `APP_BASE_URL` and `CLIENT_ID` is used automatically.
+
+### 3. Configure the app
 
 ```bash
 cp .env.example .env
@@ -61,7 +95,7 @@ random `SECRET_KEY`, and the `APP_BASE_URL` you'll run the app on. Adjust
 `DIGEST_HOUR` / `DIGEST_MINUTE` / `TIMEZONE` for when the morning email
 should go out.
 
-### 3. Install and run
+### 4. Install and run
 
 ```bash
 python -m venv .venv
@@ -71,7 +105,12 @@ python run.py
 ```
 
 Visit http://localhost:5000, sign in with Microsoft, and start adding
-reminders.
+reminders. To install the Outlook add-in, visit `/addin/install` (linked in
+the top nav) for the manifest URL and sideloading steps — note Outlook
+requires the add-in and its task pane to be served over **HTTPS** on a
+publicly reachable domain, so `http://localhost` only works for local
+in-browser testing of `/addin/taskpane.html`, not for actually sideloading
+into Outlook.
 
 For production, run behind a WSGI server, e.g.:
 

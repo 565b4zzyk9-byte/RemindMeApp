@@ -14,11 +14,13 @@ def create_app(config_class: type = Config) -> Flask:
 
     db.init_app(app)
 
+    from .addin import addin_bp
     from .auth import auth_bp
     from .tasks import tasks_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(tasks_bp)
+    app.register_blueprint(addin_bp)
 
     @app.context_processor
     def inject_user():

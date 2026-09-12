@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Outlook add-in - RemindMeApp{% endblock %}
+{% block content %}
+
+  <section class="card">
+    <h2>Outlook add-in</h2>
+    <p>
+      Install the RemindMeApp add-in to add a reminder straight from an open
+      email in Outlook, without switching to the browser.
+    </p>
+
+    <h3>Manifest URL</h3>
+    <p>Use this URL to sideload the add-in:</p>
+    <p><code>{{ manifest_url }}</code></p>
+
+    <h3>Outlook on the web</h3>
+    <ol>
+      <li>Open an email, then in the ribbon choose <strong>Get add-ins</strong> (or the "..." menu &rarr; Get add-ins).</li>
+      <li>Choose <strong>My add-ins</strong> &rarr; <strong>Add a custom add-in</strong> &rarr; <strong>Add from URL</strong>.</li>
+      <li>Paste the manifest URL above and confirm.</li>
+    </ol>
+
+    <h3>Outlook desktop (new Outlook / classic)</h3>
+    <ol>
+      <li>Go to <strong>Home &rarr; Get Add-ins &rarr; My add-ins</strong>.</li>
+      <li>Choose <strong>Add a custom add-in &rarr; Add from URL</strong> and paste the manifest URL above.</li>
+    </ol>
+
+    <p class="hint">
+      An admin can also push this to everyone at once via the Microsoft 365
+      admin center (Settings &rarr; Integrated apps &rarr; Upload custom app),
+      which avoids each person sideloading it individually.
+    </p>
+  </section>
+
+{% endblock %}

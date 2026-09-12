@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -31,3 +32,14 @@ class Config:
     TIMEZONE = os.environ.get("TIMEZONE", "UTC")
 
     ENABLE_SCHEDULER = _env_bool("ENABLE_SCHEDULER", True)
+
+    # Outlook add-in. ADDIN_ID identifies the add-in itself (distinct from
+    # the Azure AD CLIENT_ID) and can be any stable GUID; the default below
+    # is fine for internal sideloading.
+    ADDIN_ID = os.environ.get("ADDIN_ID", "8f2b6b9a-8a2b-4b7e-9b8b-8b6b9a8a2b4b")
+    # Office SSO identifies the add-in's backing API by this Application ID
+    # URI. It must match what you set under Azure AD -> Expose an API.
+    ADDIN_APP_ID_URI = os.environ.get(
+        "ADDIN_APP_ID_URI",
+        f"api://{urlparse(APP_BASE_URL).hostname}/{CLIENT_ID}",
+    )
