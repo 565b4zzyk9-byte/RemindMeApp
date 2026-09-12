@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Edit reminder - RemindMeApp{% endblock %}
+{% block content %}
+
+  <section class="card">
+    <h2>Edit reminder</h2>
+    <form method="post" action="{{ url_for('tasks.update_task', task_id=task.id) }}" class="task-form">
+      <input type="text" name="title" value="{{ task.title }}" required maxlength="500">
+      <textarea name="notes" rows="2">{{ task.notes or '' }}</textarea>
+      <label class="inline-label">
+        Remind me after
+        <input type="date" name="remind_after" value="{{ task.remind_after.isoformat() if task.remind_after else '' }}">
+        <span class="hint">(leave blank to be reminded starting now)</span>
+      </label>
+      <div class="button-row">
+        <button type="submit" class="button">Save changes</button>
+        <a href="{{ url_for('tasks.index') }}" class="button secondary">Cancel</a>
+      </div>
+    </form>
+  </section>
+
+{% endblock %}

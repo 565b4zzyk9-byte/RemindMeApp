@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Search - RemindMeApp{% endblock %}
+{% block content %}
+
+  <section class="card">
+    <h2>Search reminders</h2>
+    <form method="get" action="{{ url_for('tasks.search') }}" class="search-form">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search title or notes">
+      <select name="status">
+        <option value="all" {{ 'selected' if status == 'all' }}>All</option>
+        <option value="open" {{ 'selected' if status == 'open' }}>Open</option>
+        <option value="done" {{ 'selected' if status == 'done' }}>Done</option>
+      </select>
+      <button type="submit" class="button">Search</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Results ({{ results|length }})</h2>
+    {% if results %}
+      <ul class="task-list">
+        {% for task in results %}
+          <li class="task-item {{ 'done' if task.done }}">
+            <form method="post" action="{{ url_for('tasks.toggle_done', task_id=task.id) }}">
+              <label class="checkbox">
+                <input type="checkbox" onchange="this.form.submit()" {{ 'checked' if task.done }}>
+                <span class="task-title">{{ task.title }}</span>
+              </label>
+            </form>
+            {% if task.notes %}<div class="task-notes">{{ task.notes }}</div>{% endif %}
+            <div class="task-meta">
+              Added {{ task.created_at.strftime('%Y-%m-%d') }}
+              {% if task.remind_after %} &middot; snoozed until {{ task.remind_after.strftime('%Y-%m-%d') }}{% endif %}
+              {% if task.done and task.done_at %} &middot; done {{ task.done_at.strftime('%Y-%m-%d') }}{% endif %}
+              <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('tasks.delete_task', task_id=task.id) }}"
+                    class="inline-form" onsubmit="return confirm('Delete this reminder?')">
+                <button type="submit" class="link-button">Delete</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">No matching reminders.</p>
+    {% endif %}
+  </section>
+
+{% endblock %}
