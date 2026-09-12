@@ -39,18 +39,17 @@ def index():
     )
 
 
-@tasks_bp.route("/tasks", methods=["POST"])
-def create_task():
-    if not g.user:
-        return redirect(url_for("tasks.index"))
-
+def _parse_task_form():
+    """Read and validate title/notes/remind_after from request.form. Returns
+    (title, notes, remind_after) or None if validation failed (a flash
+    message has already been set)."""
     title = (request.form.get("title") or "").strip()
     notes = (request.form.get("notes") or "").strip() or None
     remind_after_raw = (request.form.get("remind_after") or "").strip()
 
     if not title:
         flash("Title is required.", "error")
-        return redirect(url_for("tasks.index"))
+        return None
 
     remind_after = None
     if remind_after_raw:
@@ -58,13 +57,67 @@ def create_task():
             remind_after = datetime.strptime(remind_after_raw, "%Y-%m-%d").date()
         except ValueError:
             flash("Remind-after date must be a valid date.", "error")
-            return redirect(url_for("tasks.index"))
+            return None
+
+    return title, notes, remind_after
+
+
+@tasks_bp.route("/tasks", methods=["POST"])
+def create_task():
+    if not g.user:
+        return redirect(url_for("tasks.index"))
+
+    parsed = _parse_task_form()
+    if parsed is None:
+        return redirect(url_for("tasks.index"))
+    title, notes, remind_after = parsed
 
     task = Task(user_id=g.user.id, title=title, notes=notes, remind_after=remind_after)
     db.session.add(task)
     db.session.commit()
     flash("Reminder added.", "success")
     return redirect(url_for("tasks.index"))
+
+
+@tasks_bp.route("/tasks/<int:task_id>/edit", methods=["GET"])
+def edit_task(task_id):
+    if not g.user:
+        return redirect(url_for("tasks.index"))
+
+    task = g.user.tasks.filter_by(id=task_id).first_or_404()
+    return render_template("edit.html", task=task)
+
+
+@tasks_bp.route("/tasks/<int:task_id>/edit", methods=["POST"])
+def update_task(task_id):
+    if not g.user:
+        return redirect(url_for("tasks.index"))
+
+    task = g.user.tasks.filter_by(id=task_id).first_or_404()
+
+    parsed = _parse_task_form()
+    if parsed is None:
+        return redirect(url_for("tasks.edit_task", task_id=task.id))
+    title, notes, remind_after = parsed
+
+    task.title = title
+    task.notes = notes
+    task.remind_after = remind_after
+    db.session.commit()
+    flash("Reminder updated.", "success")
+    return redirect(url_for("tasks.index"))
+
+
+@tasks_bp.route("/tasks/<int:task_id>/delete", methods=["POST"])
+def delete_task(task_id):
+    if not g.user:
+        return redirect(url_for("tasks.index"))
+
+    task = g.user.tasks.filter_by(id=task_id).first_or_404()
+    db.session.delete(task)
+    db.session.commit()
+    flash("Reminder deleted.", "success")
+    return redirect(request.referrer or url_for("tasks.index"))
 
 
 @tasks_bp.route("/tasks/<int:task_id>/toggle-done", methods=["POST"])
